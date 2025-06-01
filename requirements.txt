@@ -2,3 +2,5 @@ Flask==2.2.2
 openai==0.27.0
 gunicorn==20.1.0
 Werkzeug==2.2.3
+Flask-SQLAlchemy
+# pip install --index-url=https://pypi.org/simple --upgrade pip

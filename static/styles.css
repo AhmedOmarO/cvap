@@ -1,0 +1,151 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #343541;
+    color: white;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+.header {
+    text-align: center;
+    background-color: #222;
+    padding: 15px;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.faq-container {
+    background-color: #222;
+    padding: 15px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+}
+
+.bot-message {
+    align-self: flex-start;
+    font-size: 16px;
+    color: #ffffff;
+}
+
+.faq-button {
+    background-color: #4a4a4a;
+    padding: 10px 15px;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+    color: white;
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+.faq-button:hover {
+    background-color: #5a5a5a;
+}
+
+.chat-container {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.message {
+    word-wrap: break-word;
+}
+
+.user-message {
+    align-self: flex-end;
+    background-color: #0a84ff;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+/* Typing Effect for Bot Messages */
+.typing {
+    display: inline-block;
+    overflow: hidden;
+    white-space: nowrap;
+    width: 0;
+    animation: typing 3s steps(30, end) forwards, blinkCursor 0.6s infinite;
+}
+
+@keyframes typing {
+    from { width: 0; }
+    to { width: 100%; }
+}
+
+@keyframes blinkCursor {
+    50% { border-color: transparent; }
+}
+
+.input-container {
+    display: flex;
+    padding: 10px;
+    background-color: #444654;
+    border-top: 1px solid #555;
+}
+
+.input-container input {
+    flex-grow: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 5px;
+    outline: none;
+    font-size: 16px;
+    background-color: #303136;
+    color: white;
+}
+
+.input-container button {
+    padding: 12px;
+    margin-left: 10px;
+    border: none;
+    background-color: #0a84ff;
+    color: white;
+    cursor: pointer;
+    border-radius: 5px;
+}
+
+.input-container button:hover {
+    background-color: #0066cc;
+}
+.li {
+    margin-bottom: 1px; /* Reduce this value */
+}
+.p{
+    margin-bottom: 1px; /* Reduce this value */
+}
+.strong{
+    padding: 0px;
+    
+}
+/* show  text when hover  */
+.fa-trash { 
+    position: relative; /* Required for the tooltip to be positioned relative to the button */ 
+  } 
+   
+  .fa-trash::after { 
+    content: "Clear"; /* The text to show in the tooltip */ 
+    display: none; /* Hide the tooltip by default */ 
+    position: absolute; /* Position the tooltip relative to the button */ 
+    bottom: 100%; /* Position the tooltip above the button */ 
+    left: 50%; /* Center the tooltip horizontally */ 
+    transform: translateX(-50%); /* Center the tooltip horizontally */ 
+    background-color: #000; /* Tooltip background color */ 
+    color: #fff; /* Tooltip text color */ 
+    padding: 5px; /* Add some padding to the tooltip */ 
+    border-radius: 5px; /* Add rounded corners to the tooltip */ 
+    white-space: nowrap; /* Prevent line breaks in tooltip text */ 
+  } 
+   
+  .fa-trash:hover::after { 
+    display: block; /* Show the tooltip when hovering over the button */ 
+  } 
+  

@@ -4,98 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ahmed Omar's Resume Chatbot</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #343541;
-            color: white;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-        }
-        
-        .header {
-            text-align: center;
-            background-color: #222;
-            padding: 15px;
-            font-size: 20px;
-            font-weight: bold;
-        }
-        .faq-container {
-            background-color: #222;
-            padding: 15px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            justify-content: center;
-        }
-        .bot-message {
-            align-self: flex-start;
-            font-size: 16px; /* Larger font for readability */
-            color: #ffffff;
-        }
-
-
-        .faq-button {
-            background-color: #4a4a4a;
-            padding: 10px 15px;
-            border-radius: 5px;
-            border: none;
-            cursor: pointer;
-            color: white;
-            font-size: 14px;
-            white-space: nowrap;
-        }
-        .faq-button:hover {
-            background-color: #5a5a5a;
-        }
-        .chat-container {
-            flex-grow: 1;
-            overflow-y: auto;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-        .message {
-            word-wrap: break-word;
-        }
-        .user-message {
-            align-self: flex-end;
-            background-color: #0a84ff;
-        }
-        .input-container {
-            display: flex;
-            padding: 10px;
-            background-color: #444654;
-            border-top: 1px solid #555;
-        }
-        .input-container input {
-            flex-grow: 1;
-            padding: 12px;
-            border: none;
-            border-radius: 5px;
-            outline: none;
-            font-size: 16px;
-            background-color: #303136;
-            color: white;
-        }
-        .input-container button {
-            padding: 12px;
-            margin-left: 10px;
-            border: none;
-            background-color: #0a84ff;
-            color: white;
-            cursor: pointer;
-            border-radius: 5px;
-        }
-        .input-container button:hover {
-            background-color: #0066cc;
-        }
-    </style>
 </head>
 <body>
 
@@ -103,128 +13,25 @@
         Welcome to Ahmed Omar's Resume Chatbot!
     </div>
 
-    <div class="faq-container" id="faqContainer">Loading FAQs...</div> <!-- Dynamic FAQ Section -->
+    <div class="faq-container" id="faqContainer">Loading FAQs...</div>
 
     <div class="chat-container" id="chatContainer">
-        <div class="bot-message message">Hello! How can I assist you?</div>
+        
+        <p class="typing" id="typingEffect"> <b> Hello! How can I assist you? </b> </p> 
+
     </div>
 
     <div class="input-container">
         <input type="text" id="userInput" placeholder="Type a message..." onkeypress="handleKeyPress(event)">
-        <button onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
-    </div>
+        <button onclick="sendMessage()"><i class="fas fa-paper-plane" title="Clear"></i></button>
+        <!-- <button onclick="stopChat()"><i class="fas fa-stop"></i></button> -->
+        <button onclick="clearChat()"><i class="fas fa-trash" ></i></button>
 
-    <script>
-
-// Load FAQs dynamically
-
-async function loadFAQs() {
-    let faqContainer = document.getElementById('faqContainer');
-    faqContainer.innerHTML = ""; 
-
-    try {
-        let response = await fetch('/get_faqs');
-        let data = await response.json();
         
-        data.faqs.forEach((question) => {
-            let button = document.createElement('button');
-            button.classList.add("faq-button");
-            button.textContent = question;
-            button.onclick = () => sendMessage(question);
-            faqContainer.appendChild(button);
-        });
-    } catch (error) {
-        console.error("Error loading FAQs:", error);
-        faqContainer.innerHTML = "Failed to load FAQs.";
-    }
-}
-
-// Send user message & get bot response
-function sendMessage(message = null) {
-    let userInput = document.getElementById('userInput');
-    let messageText = message ? message : userInput.value.trim();
-    if (messageText === "") return;
-
-    appendMessage(messageText, "user-message");
-
-    fetch('/get_response', {
-        method: 'POST',
-        body: JSON.stringify({ message: messageText }),
-        headers: { 'Content-Type': 'application/json' }
-    })
-    .then(response => response.json())
-    .then(data => {
-        typeMessage(data.response, "bot-message");
-    });
-
-    if (!message) {
-        userInput.value = "";
-    }
-}
-// 
-// Typing effect & show messages section-by-section
-function typeMessage(text, className) {
-    let chatContainer = document.getElementById('chatContainer');
-    let paragraphs = text.split('.'); // Split into paragraphs while keeping structure
-    let index = 0;
-
-    function showNextParagraph() {
-        if (index < paragraphs.length) {
-            let messageDiv = document.createElement('div');
-            messageDiv.classList.add("message", className);
-            chatContainer.appendChild(messageDiv);
-
-            // Show "Typing..." first
-            messageDiv.innerHTML = "<i>Typing...</i>";
-
-            setTimeout(() => {
-                messageDiv.innerHTML = ""; // Clear typing indicator
-                messageDiv.innerHTML = `<div class="message-section">${paragraphs[index]}</div>`; // Wrap each paragraph in a separate box
-                index++;
-                chatContainer.scrollTop = chatContainer.scrollHeight; // Auto-scroll
-                setTimeout(showNextParagraph, 1000); // Pause before next paragraph
-            }, 1000); // 300ms delay for "Typing..."
-        }
-    }
-
-    showNextParagraph(); // Start displaying paragraphs
-}
-// Append full message & display paragraphs with delay
-function appendMessage(text, className) {
-    let chatContainer = document.getElementById('chatContainer');
-
-    let messageDiv = document.createElement('div');
-    messageDiv.classList.add("message", className);
-    chatContainer.appendChild(messageDiv);
-
-    let paragraphs = text.split("."); // Split text into paragraphs while keeping HTML tags
-    let index = 0;
-
-    function showNextParagraph() {
-        if (index < paragraphs.length) {
-            messageDiv.innerHTML += paragraphs[index] + "</div>"; // Append each paragraph
-            index++;
-            chatContainer.scrollTop = chatContainer.scrollHeight; // Auto-scroll
-            setTimeout(showNextParagraph, 1000); // 1s pause between paragraphs
-        }
-    }
-
-    setTimeout(showNextParagraph, 500); // Initial delay before the first paragraph
-}
-
-// Handle "Enter" key press to send message
-function handleKeyPress(event) {
-    if (event.key === "Enter") {
-        sendMessage();
-    }
-}
-
-// Load FAQs on page load
-loadFAQs();
-
-    </script>
+    </div>
     
-    
+
+    <script src="{{ url_for('static', filename='scripts.js') }}"></script>
 
 </body>
 </html>
