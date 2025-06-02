@@ -14,6 +14,7 @@ class ResumeValidationResult:
     word_count: int
     confidence_score: float
     message: str
+    extracted_text_path: Optional[str] = None
 
 class ResumeHandler:
     """Handler for resume upload and validation"""
