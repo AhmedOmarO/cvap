@@ -1,0 +1,28 @@
+<!-- Navigation Bar -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container">
+        <a class="navbar-brand" href="{{ url_for('index') }}">CV Assistant Portal</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'index' %}active{% endif %}" href="{{ url_for('index') }}">
+                        <i class="fas fa-comments"></i> Chat
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'upload_resume' %}active{% endif %}" href="{{ url_for('upload_resume') }}">
+                        <i class="fas fa-file-upload"></i> Upload Resume
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'manage_faqs' %}active{% endif %}" href="{{ url_for('manage_faqs') }}">
+                        <i class="fas fa-question-circle"></i> Manage FAQs
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav> 

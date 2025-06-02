@@ -1,3 +1,7 @@
 *.pyc
 /__pycache__
-
+.env
+instance/faq_responses.db
+/uploads/*
+/instance/*
+app copy.py

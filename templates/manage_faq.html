@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage FAQs - CVAP</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    {% include 'navbar.html' %}
+
+    <div class="container mt-4">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">Manage FAQs</h4>
+                        <button type="button" class="btn btn-success" onclick="addNewQA()">
+                            <i class="fas fa-plus"></i> Add New Q&A
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <form id="faqForm" action="{{ url_for('save_faqs_route') }}" method="POST">
+                            <div id="faqContainer">
+                                {% if faqs %}
+                                    {% for question, answer in faqs.items() %}
+                                        <div class="qa-pair mb-4">
+                                            <div class="input-group mb-2">
+                                                <span class="input-group-text"><i class="fas fa-question"></i></span>
+                                                <input type="text" class="form-control" name="questions[]" placeholder="Enter question" value="{{ question }}" required>
+                                                <button type="button" class="btn btn-danger" onclick="removeQA(this)">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                            <div class="input-group">
+                                                <span class="input-group-text"><i class="fas fa-comment"></i></span>
+                                                <textarea class="form-control" name="answers[]" rows="2" placeholder="Enter answer" required>{{ answer }}</textarea>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="qa-pair mb-4">
+                                        <div class="input-group mb-2">
+                                            <span class="input-group-text"><i class="fas fa-question"></i></span>
+                                            <input type="text" class="form-control" name="questions[]" placeholder="Enter question" required>
+                                            <button type="button" class="btn btn-danger" onclick="removeQA(this)">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fas fa-comment"></i></span>
+                                            <textarea class="form-control" name="answers[]" rows="2" placeholder="Enter answer" required></textarea>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="text-center mt-4">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Save FAQs
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function addNewQA() {
+            const container = document.getElementById('faqContainer');
+            const newQA = document.createElement('div');
+            newQA.className = 'qa-pair mb-4';
+            newQA.innerHTML = `
+                <div class="input-group mb-2">
+                    <span class="input-group-text"><i class="fas fa-question"></i></span>
+                    <input type="text" class="form-control" name="questions[]" placeholder="Enter question" required>
+                    <button type="button" class="btn btn-danger" onclick="removeQA(this)">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fas fa-comment"></i></span>
+                    <textarea class="form-control" name="answers[]" rows="2" placeholder="Enter answer" required></textarea>
+                </div>
+            `;
+            container.appendChild(newQA);
+        }
+
+        function removeQA(button) {
+            const qaPair = button.closest('.qa-pair');
+            if (document.getElementsByClassName('qa-pair').length > 1) {
+                qaPair.remove();
+            } else {
+                alert('You must have at least one Q&A pair!');
+            }
+        }
+    </script>
+</body>
+</html> 

@@ -1,38 +1,72 @@
-from flask import Flask, render_template, request, jsonify, session
-from flask_sqlalchemy import SQLAlchemy
-import json
+# app.py
+from flask import Flask, render_template, request, jsonify, session, flash, redirect, url_for
 import os
-import threading
+import json
+import logging
+from werkzeug.utils import secure_filename
+from resume_handler import ResumeHandler
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('app.log'),
+        logging.StreamHandler()
+    ]
+)
+
+class FAQManager:
+    def __init__(self, file_path='faq_responses.json'):
+        self.file_path = file_path
+        self.faqs = {}
+        self.clear_faqs()
+
+    def clear_faqs(self):
+        self.faqs = {}
+        self.save_faqs()
+
+    def load_faqs(self):
+        try:
+            if os.path.exists(self.file_path):
+                with open(self.file_path, 'r') as f:
+                    self.faqs = json.load(f)
+            return self.faqs
+        except json.JSONDecodeError:
+            return {}
+
+    def save_faqs(self, new_faqs=None, mode='merge'):
+        try:
+            if new_faqs is not None:
+                if mode == 'merge':
+                    self.faqs.update(new_faqs)
+                else:
+                    self.faqs = new_faqs
+
+            with open(self.file_path, 'w') as f:
+                json.dump(self.faqs, f, indent=4)
+            return True
+        except Exception as e:
+            app.logger.error(f"Error saving FAQs: {str(e)}")
+            return False
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///faq_responses.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SECRET_KEY'] = 'supersecretkey'  # Needed for session management
-db = SQLAlchemy(app)
 
-class SubmittedQuestion(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    timestamp = db.Column(db.DateTime, server_default=db.func.now())
-    question = db.Column(db.String(500), nullable=False)
-    answer = db.Column(db.Text, nullable=False)
+# Basic Flask configurations
+app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'a-default-secret-key-for-dev')
+app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'uploads')
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB Max file size
 
-# Initialize the database
-with app.app_context():
-    if not os.path.exists('faq_responses.db'):
-        db.create_all()
+# Ensure the 'uploads' directory exists
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-# Load FAQ responses from JSON file
-with open('faq_responses.json', 'r') as f:
-    faq_responses = json.load(f)
-
-# Dictionary to hold locks for each user
-user_locks = {}
-
-def get_user_lock(user_id):
-    """Retrieve or create a lock for the given user."""
-    if user_id not in user_locks:
-        user_locks[user_id] = threading.Lock()
-    return user_locks[user_id]
+# Initialize handlers
+resume_handler = ResumeHandler(app.config['UPLOAD_FOLDER'])
+faq_manager = FAQManager()
 
 @app.route('/')
 def index():
@@ -40,31 +74,119 @@ def index():
 
 @app.route('/get_faqs', methods=['GET'])
 def get_faqs():
-    return jsonify({'faqs': list(faq_responses.keys())})
+    faqs = faq_manager.load_faqs()
+    return jsonify({'faqs': list(faqs.keys())})
 
 @app.route('/get_response', methods=['POST'])
 def get_response():
     data = request.get_json()
+    if not data or 'message' not in data:
+        return jsonify({'response': "Invalid request."}), 400
+
     user_message = data.get('message', '')
-
-    # Identify user (use session ID or a user token if available)
-    user_id = session.get('user_id', request.remote_addr)  # Fallback to IP if no session
-
-    lock = get_user_lock(user_id)
-
-    # Ensure only one request per user is processed at a time
-    with lock:
-        response_text = faq_responses.get(user_message, "I'm not sure about that. Try an FAQ!")
-        
-        # Save question and answer to the database
-        try:
-            submitted_question = SubmittedQuestion(question=user_message, answer=response_text)
-            db.session.add(submitted_question)
-            db.session.commit()
-        except Exception as e:
-            print(f"Error saving question and answer: {e}")
-
+    faqs = faq_manager.load_faqs()
+    response_text = faqs.get(user_message, "I'm not sure about that. Please try an FAQ or rephrase.")
     return jsonify({'response': response_text})
 
+@app.route('/manage_faqs', methods=['GET'])
+def manage_faqs():
+    faqs = faq_manager.load_faqs()
+    return render_template('manage_faq.html', faqs=faqs)
+
+@app.route('/save_faqs', methods=['POST'])
+def save_faqs_route():
+    questions = request.form.getlist('questions[]')
+    answers = request.form.getlist('answers[]')
+    
+    new_faqs = {q.strip(): a.strip() for q, a in zip(questions, answers) if q and a}
+    
+    if faq_manager.save_faqs(new_faqs, mode='replace'):
+        flash('FAQs have been successfully updated!', 'success')
+    else:
+        flash('Error saving FAQs. Please try again.', 'error')
+    
+    return redirect(url_for('manage_faqs'))
+
+@app.route('/upload_resume', methods=['GET', 'POST'])
+def upload_resume():
+    app.logger.info("Uploading resume")
+    
+    if request.method == 'GET':
+        return render_template('upload.html')
+
+    try:
+        if 'resume' not in request.files:
+            app.logger.warning("Upload attempt with no 'resume' file part.")
+            return jsonify({
+                'success': False,
+                'message': 'No file part in the request.',
+                'word_count': 0,
+                'confidence_score': 0.0,
+                'extracted_text_path': None
+            }), 400
+
+        file = request.files['resume']
+        if file.filename == '':
+            app.logger.warning("Upload attempt with no file selected.")
+            return jsonify({
+                'success': False,
+                'message': 'No file selected for upload.',
+                'word_count': 0,
+                'confidence_score': 0.0,
+                'extracted_text_path': None
+            }), 400
+
+        if not resume_handler.allowed_file(file.filename):
+            app.logger.warning(f"Upload attempt with disallowed file type: {file.filename}")
+            return jsonify({
+                'success': False,
+                'message': f"Invalid file type: '{file.filename}'. Allowed: {', '.join(resume_handler.ALLOWED_EXTENSIONS)}.",
+                'word_count': 0,
+                'confidence_score': 0.0,
+                'extracted_text_path': None
+            }), 400
+
+        app.logger.info(f"Processing uploaded file: {file.filename}")
+        overall_success, result_obj = resume_handler.process_resume(file)
+        app.logger.info(f"Resume processed: {overall_success}")
+        app.logger.info(f"Resume result: {result_obj}")
+
+        if overall_success and result_obj.is_valid and result_obj.extracted_text_path:
+            app.logger.info(f"Resume validated: {file.filename}")
+            flash('Resume uploaded and validated successfully!', 'success')
+            
+            # Check if it's an AJAX request
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({
+                    'success': True,
+                    'message': 'Resume uploaded and validated successfully!',
+                    'word_count': result_obj.word_count,
+                    'confidence_score': result_obj.confidence_score,
+                    'redirect': url_for('manage_faqs')
+                })
+            else:
+                # Regular form submission
+                return redirect(url_for('manage_faqs'))
+        else:
+            error_message = result_obj.message if result_obj else "Unknown error occurred"
+            app.logger.error(f"Resume processing failed: {error_message}")
+            return jsonify({
+                'success': False,
+                'message': error_message,
+                'word_count': result_obj.word_count if result_obj else 0,
+                'confidence_score': result_obj.confidence_score if result_obj else 0.0,
+                'extracted_text_path': None
+            }), 400
+
+    except Exception as e:
+        app.logger.error(f"Error processing resume: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': f'Error processing resume: {str(e)}',
+            'word_count': 0,
+            'confidence_score': 0.0,
+            'extracted_text_path': None
+        }), 500
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, port=5001)
