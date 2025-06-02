@@ -4,3 +4,4 @@
 instance/faq_responses.db
 /uploads/*
 /instance/*
+app copy.py

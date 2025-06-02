@@ -6,6 +6,19 @@ from docx import Document
 from dataclasses import dataclass
 from flask import current_app
 import uuid
+from llm_handler import LLMHandler
+import json
+import logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('app.log'),
+        logging.StreamHandler()
+    ]
+)
+
+FAQ_FILE = 'faq_responses.json'
 
 @dataclass
 class ResumeValidationResult:
@@ -214,7 +227,7 @@ class ResumeHandler:
         
         # Validate resume
         validation_result = self.validate_resume(text)
-        
+
         # Clean up file if validation failed
         if not validation_result.is_valid:
             try:
@@ -222,13 +235,30 @@ class ResumeHandler:
             except Exception as e:
                 current_app.logger.error(f"Error removing file {result}: {str(e)}")
         else:
-            ## save text to upload folder with the same name as the file
-            # generate a unique id for the resume
+            # Generate a unique id for the resume
             unique_id = self.generate_unique_id()
-            # save text to upload folder with the same name as the file
-            with open(os.path.join(self.upload_folder, unique_id + '.txt'), 'w') as f:
-                f.write(text)
-            
-            # save the resume to the database
+            # Save text to upload folder with the unique id
+            text_path = os.path.join(self.upload_folder, unique_id + '.txt')
+            try:
+                with open(text_path, 'w') as f:
+                    f.write(text)
+            ## Ahmed Generate FAQs from the resume text
+                llm_handler = LLMHandler()
+                faqs = llm_handler.generate_faqs_from_resume(text)
+                ## Ahmed: update the json file with the new faqs
+                with open(FAQ_FILE, 'w') as f:
+                    json.dump(faqs, f, indent=4)                    
+                # Set the extracted text path in the validation result
+                validation_result.extracted_text_path = text_path
+            except Exception as e:
+                logging.error(f"Error saving text file: {str(e)}")
+
+                return False, ResumeValidationResult(
+                    is_valid=False,
+                    word_count=validation_result.word_count,
+                    confidence_score=validation_result.confidence_score,
+                    message=f"Error saving processed text: {str(e)}"
+                )
             
         return True, validation_result 
+
