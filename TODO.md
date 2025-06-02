@@ -20,7 +20,7 @@
   - Modify `ResumeHandler` to save resume details (file path, extracted text, initial validation) into the new database upon successful upload.
   - Ensure that if validation fails (including text extraction failure), the file is still recorded, but its status is marked appropriately.
 
-- [ ] **2. Enhance UI Navigation for Resume Management:**
+- [X] **2. Enhance UI Navigation for Resume Management:**
   - Implement clear navigation links between the main Chat interface (`index.html`) and the Resume Upload page (`upload.html`).
   - Ensure the active page is highlighted in the navigation bar on both pages.
   - Consider a dedicated "Manage Resumes" or "My Resumes" page if multiple resume uploads per user are envisioned.

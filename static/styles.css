@@ -1,35 +1,118 @@
+/* Global Styles */
 body {
-    font-family: Arial, sans-serif;
-    background-color: #343541;
-    color: white;
     margin: 0;
     padding: 0;
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: #f8f9fa;
 }
 
+/* Navigation Bar Custom Styles */
+.navbar {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.navbar-brand {
+    font-weight: 600;
+}
+
+/* Chat Interface Styles */
 .header {
+    background-color: #343a40;
+    color: white;
     text-align: center;
-    background-color: #222;
-    padding: 15px;
-    font-size: 20px;
-    font-weight: bold;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-radius: 0.25rem;
+}
+
+.chat-container {
+    height: 60vh;
+    overflow-y: auto;
+    padding: 1rem;
+    background-color: white;
+    border-radius: 0.25rem;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    margin-bottom: 1rem;
 }
 
 .faq-container {
-    background-color: #222;
-    padding: 15px;
+    background-color: white;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-radius: 0.25rem;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.input-container {
     display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    justify-content: center;
+    gap: 0.5rem;
+    padding: 1rem;
+    background-color: white;
+    border-radius: 0.25rem;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.input-container input {
+    flex: 1;
+    padding: 0.5rem;
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+    font-size: 1rem;
+}
+
+.input-container button {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 0.25rem;
+    background-color: #007bff;
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.input-container button:hover {
+    background-color: #0056b3;
+}
+
+/* Message Styles */
+.user-message {
+    background-color: #007bff;
+    color: white;
+    padding: 0.75rem;
+    border-radius: 1rem;
+    margin: 0.5rem 0;
+    max-width: 80%;
+    margin-left: auto;
 }
 
 .bot-message {
-    align-self: flex-start;
-    font-size: 16px;
-    color: #ffffff;
+    background-color: #e9ecef;
+    color: #212529;
+    padding: 0.75rem;
+    border-radius: 1rem;
+    margin: 0.5rem 0;
+    max-width: 80%;
+}
+
+/* Typing Effect */
+.typing {
+    color: #6c757d;
+    font-style: italic;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .chat-container {
+        height: 50vh;
+    }
+    
+    .input-container {
+        flex-direction: column;
+    }
+    
+    .input-container button {
+        width: 100%;
+    }
 }
 
 .faq-button {
@@ -47,85 +130,23 @@ body {
     background-color: #5a5a5a;
 }
 
-.chat-container {
-    flex-grow: 1;
-    overflow-y: auto;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-
 .message {
     word-wrap: break-word;
 }
 
-.user-message {
-    align-self: flex-end;
-    background-color: #0a84ff;
-    padding: 10px;
-    border-radius: 5px;
-}
-
-/* Typing Effect for Bot Messages */
-.typing {
-    display: inline-block;
-    overflow: hidden;
-    white-space: nowrap;
-    width: 0;
-    animation: typing 3s steps(30, end) forwards, blinkCursor 0.6s infinite;
-}
-
-@keyframes typing {
-    from { width: 0; }
-    to { width: 100%; }
-}
-
-@keyframes blinkCursor {
-    50% { border-color: transparent; }
-}
-
-.input-container {
-    display: flex;
-    padding: 10px;
-    background-color: #444654;
-    border-top: 1px solid #555;
-}
-
-.input-container input {
-    flex-grow: 1;
-    padding: 12px;
-    border: none;
-    border-radius: 5px;
-    outline: none;
-    font-size: 16px;
-    background-color: #303136;
-    color: white;
-}
-
-.input-container button {
-    padding: 12px;
-    margin-left: 10px;
-    border: none;
-    background-color: #0a84ff;
-    color: white;
-    cursor: pointer;
-    border-radius: 5px;
-}
-
-.input-container button:hover {
-    background-color: #0066cc;
-}
 .li {
     margin-bottom: 1px; /* Reduce this value */
 }
+
 .p{
     margin-bottom: 1px; /* Reduce this value */
 }
+
 .strong{
     padding: 0px;
     
 }
+
 /* show  text when hover  */
 .fa-trash { 
     position: relative; /* Required for the tooltip to be positioned relative to the button */ 
@@ -148,4 +169,5 @@ body {
   .fa-trash:hover::after { 
     display: block; /* Show the tooltip when hovering over the button */ 
   } 
+  
   
