@@ -173,7 +173,10 @@
             try {
                 const response = await fetch('/upload_resume', {
                     method: 'POST',
-                    body: formData
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
                 });
                 
                 const result = await response.json();
@@ -183,16 +186,27 @@
                 if (result.success) {
                     successIcon.style.display = 'block';
                     errorIcon.style.display = 'none';
+                    
+                    // Show validation results
+                    validationResults.style.display = 'block';
+                    document.getElementById('wordCount').textContent = `Word count: ${result.word_count}`;
+                    document.getElementById('confidenceScore').textContent = `Confidence score: ${(result.confidence_score * 100).toFixed(1)}%`;
+                    document.getElementById('validationMessage').textContent = result.message;
+                    
+                    // Handle redirection if provided
+                    if (result.redirect) {
+                        setTimeout(() => {
+                            window.location.href = result.redirect;
+                        }, 1500); // Delay for 1.5 seconds to show success state
+                    }
                 } else {
                     successIcon.style.display = 'none';
                     errorIcon.style.display = 'block';
+                    
+                    // Show validation results with error
+                    validationResults.style.display = 'block';
+                    document.getElementById('validationMessage').textContent = result.message;
                 }
-                
-                // Show validation results
-                validationResults.style.display = 'block';
-                document.getElementById('wordCount').textContent = `Word count: ${result.word_count}`;
-                document.getElementById('confidenceScore').textContent = `Confidence score: ${(result.confidence_score * 100).toFixed(1)}%`;
-                document.getElementById('validationMessage').textContent = result.message;
                 
                 // Disable upload button
                 uploadButton.disabled = true;

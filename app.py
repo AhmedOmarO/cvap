@@ -19,16 +19,21 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 resume_handler = ResumeHandler(app.config['UPLOAD_FOLDER'])
 
 # Load FAQ responses from JSON file (basic FAQ functionality)
-try:
-    with open('faq_responses.json', 'r') as f:
-        faq_responses = json.load(f)
-except FileNotFoundError:
-    app.logger.warning("faq_responses.json not found. Using empty FAQs.")
-    faq_responses = {} # Default to empty dict if file not found
-except json.JSONDecodeError:
-    app.logger.error("Error decoding faq_responses.json. Using empty FAQs.")
-    faq_responses = {}
+FAQ_FILE = 'faq_responses.json'
 
+def load_faqs():
+    try:
+        with open(FAQ_FILE, 'r') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+def save_faqs(faqs):
+    with open(FAQ_FILE, 'w') as f:
+        json.dump(faqs, f, indent=4)
+
+# Load initial FAQs
+faq_responses = load_faqs()
 
 @app.route('/')
 def index():
@@ -50,6 +55,31 @@ def get_response():
     response_text = faq_responses.get(user_message, "I'm not sure about that. Please try an FAQ or rephrase.")
             
     return jsonify({'response': response_text})
+
+@app.route('/manage_faqs', methods=['GET'])
+def manage_faqs():
+    return render_template('manage_faq.html', faqs=faq_responses)
+
+@app.route('/save_faqs', methods=['POST'])
+def save_faqs_route():
+    questions = request.form.getlist('questions[]')
+    answers = request.form.getlist('answers[]')
+    
+    # Create new FAQ dictionary
+    new_faqs = {}
+    for q, a in zip(questions, answers):
+        if q and a:  # Only add if both question and answer are non-empty
+            new_faqs[q.strip()] = a.strip()
+    
+    # Save to file
+    save_faqs(new_faqs)
+    
+    # Update global variable
+    global faq_responses
+    faq_responses = new_faqs
+    
+    flash('FAQs have been successfully updated!', 'success')
+    return redirect(url_for('manage_faqs'))
 
 # --- Resume Upload Route ---
 @app.route('/upload_resume', methods=['GET', 'POST'])
@@ -86,6 +116,11 @@ def upload_resume():
             
             if overall_success and result_obj.is_valid:
                 app.logger.info(f"Resume validated: {file.filename}. Text saved to: {result_obj.extracted_text_path}")
+                # After successful upload, redirect to FAQ management
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    response_data['redirect'] = url_for('manage_faqs')
+                    return jsonify(response_data)
+                return redirect(url_for('manage_faqs'))
             elif overall_success and not result_obj.is_valid:
                 app.logger.warning(f"Resume processed but content invalid: {file.filename}. Message: {result_obj.message}")
             else: # overall_success is False (problem with file save or text extraction)
