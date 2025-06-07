@@ -5,5 +5,5 @@ instance/faq_responses.db
 /uploads/*
 /instance/*
 app copy.py
-# *.log
-# app.log
+*.log
+faq_responses.json

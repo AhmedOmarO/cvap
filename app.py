@@ -6,6 +6,7 @@ import logging
 from werkzeug.utils import secure_filename
 from resume_handler import ResumeHandler
 from dotenv import load_dotenv
+from llm_handler import LLMHandler
 
 # Load environment variables
 load_dotenv()
@@ -67,6 +68,7 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 # Initialize handlers
 resume_handler = ResumeHandler(app.config['UPLOAD_FOLDER'])
 faq_manager = FAQManager()
+llm_handler = LLMHandler()
 
 @app.route('/')
 def index():
@@ -186,6 +188,111 @@ def upload_resume():
             'word_count': 0,
             'confidence_score': 0.0,
             'extracted_text_path': None
+        }), 500
+
+@app.route('/ask_question', methods=['POST'])
+def ask_question():
+    try:
+        data = request.get_json()
+        if not data or 'question' not in data:
+            return jsonify({
+                'success': False,
+                'message': 'No question provided'
+            }), 400
+
+        question = data['question'].strip()
+        if not question:
+            return jsonify({
+                'success': False,
+                'message': 'Question cannot be empty'
+            }), 400
+
+        app.logger.info(f"Processing question: {question}")
+        
+        # Get the latest resume text
+        latest_resume_path = None
+        for filename in os.listdir(app.config['UPLOAD_FOLDER']):
+            if filename.endswith('.txt'):
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                if latest_resume_path is None or os.path.getmtime(filepath) > os.path.getmtime(latest_resume_path):
+                    latest_resume_path = filepath
+
+        if latest_resume_path:
+            with open(latest_resume_path, 'r') as f:
+                resume_text = f.read()
+                llm_handler.set_resume_text(resume_text)
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'No resume has been uploaded yet. Please upload a resume first.'
+            }), 400
+        
+        # Get answer from LLM
+        answer = llm_handler.generate_answer(question)
+        
+        if not answer:
+            return jsonify({
+                'success': False,
+                'message': 'Failed to generate answer'
+            }), 500
+
+        # Save the new Q&A pair
+        new_faq = {question: answer}
+        if faq_manager.save_faqs(new_faq, mode='merge'):
+            return jsonify({
+                'success': True,
+                'message': 'Question answered successfully',
+                'answer': answer
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'Failed to save the Q&A pair'
+            }), 500
+
+    except Exception as e:
+        app.logger.error(f"Error processing question: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': f'Error processing question: {str(e)}'
+        }), 500
+
+@app.route('/delete_faq', methods=['POST'])
+def delete_faq():
+    try:
+        data = request.get_json()
+        if not data or 'question' not in data:
+            return jsonify({
+                'success': False,
+                'message': 'No question provided for deletion'
+            }), 400
+
+        question = data['question']
+        faqs = faq_manager.load_faqs()
+        
+        if question in faqs:
+            del faqs[question]
+            if faq_manager.save_faqs(faqs, mode='replace'):
+                return jsonify({
+                    'success': True,
+                    'message': 'FAQ deleted successfully'
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'message': 'Failed to save changes after deletion'
+                }), 500
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'FAQ not found'
+            }), 404
+
+    except Exception as e:
+        app.logger.error(f"Error deleting FAQ: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': f'Error deleting FAQ: {str(e)}'
         }), 500
 
 if __name__ == '__main__':
