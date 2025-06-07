@@ -6,98 +6,371 @@
     <title>Manage FAQs - CVAP</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <style>
+        .faq-container {
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .question-form {
+            margin-bottom: 30px;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            background-color: white;
+        }
+        .faq-list {
+            margin-top: 30px;
+        }
+        .faq-item {
+            margin-bottom: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: #f8f9fa;
+            position: relative;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+        .delete-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: #dc3545;
+            background: none;
+            border: none;
+            padding: 5px;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .delete-btn:hover {
+            color: #bd2130;
+        }
+        .delete-btn i {
+            font-size: 1.2rem;
+        }
+        .add-faq-btn {
+            margin-bottom: 20px;
+        }
+        .new-faq-form {
+            display: none;
+            margin-bottom: 20px;
+            padding: 20px;
+            border-radius: 5px;
+            background-color: #f8f9fa;
+        }
+    </style>
 </head>
 <body>
     {% include 'navbar.html' %}
 
-    <div class="container mt-4">
-        <div class="row justify-content-center">
-            <div class="col-md-8">
-                <div class="card">
-                    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-                        <h4 class="mb-0">Manage FAQs</h4>
-                        <button type="button" class="btn btn-success" onclick="addNewQA()">
-                            <i class="fas fa-plus"></i> Add New Q&A
-                        </button>
+    <div class="container">
+        <div class="faq-container">
+            <h2 class="text-center mb-4">Manage FAQs</h2>
+            
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <!-- Question Form -->
+            <div class="question-form">
+                <h4>Ask a Question</h4>
+                <form id="questionForm">
+                    <div class="mb-3">
+                        <label for="question" class="form-label">Your Question</label>
+                        <input type="text" class="form-control" id="question" name="question" required>
                     </div>
-                    <div class="card-body">
-                        <form id="faqForm" action="{{ url_for('save_faqs_route') }}" method="POST">
-                            <div id="faqContainer">
-                                {% if faqs %}
-                                    {% for question, answer in faqs.items() %}
-                                        <div class="qa-pair mb-4">
-                                            <div class="input-group mb-2">
-                                                <span class="input-group-text"><i class="fas fa-question"></i></span>
-                                                <input type="text" class="form-control" name="questions[]" placeholder="Enter question" value="{{ question }}" required>
-                                                <button type="button" class="btn btn-danger" onclick="removeQA(this)">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            </div>
-                                            <div class="input-group">
-                                                <span class="input-group-text"><i class="fas fa-comment"></i></span>
-                                                <textarea class="form-control" name="answers[]" rows="2" placeholder="Enter answer" required>{{ answer }}</textarea>
-                                            </div>
-                                        </div>
-                                    {% endfor %}
-                                {% else %}
-                                    <div class="qa-pair mb-4">
-                                        <div class="input-group mb-2">
-                                            <span class="input-group-text"><i class="fas fa-question"></i></span>
-                                            <input type="text" class="form-control" name="questions[]" placeholder="Enter question" required>
-                                            <button type="button" class="btn btn-danger" onclick="removeQA(this)">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </div>
-                                        <div class="input-group">
-                                            <span class="input-group-text"><i class="fas fa-comment"></i></span>
-                                            <textarea class="form-control" name="answers[]" rows="2" placeholder="Enter answer" required></textarea>
-                                        </div>
-                                    </div>
-                                {% endif %}
-                            </div>
-                            <div class="text-center mt-4">
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-save"></i> Save FAQs
-                                </button>
-                            </div>
-                        </form>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-primary" onclick="askLLM()">Ask LLM</button>
+                        <button type="button" class="btn btn-secondary" onclick="toggleManualAnswer()">Write Answer Yourself</button>
+                        <button type="button" class="btn btn-info" onclick="saveToExisting()">Save to Existing FAQs</button>
+                    </div>
+                </form>
+                <div id="loading" class="loading">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Generating answer...</p>
+                </div>
+                <div id="manualAnswerForm" class="mt-3" style="display: none;">
+                    <div class="mb-3">
+                        <label for="manualAnswer" class="form-label">Your Answer</label>
+                        <textarea class="form-control" id="manualAnswer" rows="3" required></textarea>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-secondary" onclick="toggleManualAnswer()">Cancel</button>
+                        <button type="button" class="btn btn-success" onclick="saveManualAnswer()">Save Answer</button>
                     </div>
                 </div>
+                <div id="answerContainer" class="mt-3" style="display: none;">
+                    <h5>Answer:</h5>
+                    <p id="answerText" class="alert alert-info"></p>
+                    <div class="d-flex justify-content-end">
+                        <button type="button" class="btn btn-info" onclick="saveCurrentToExisting()">
+                            <i class="fas fa-save"></i> Save to Existing FAQs
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FAQ List -->
+            <div class="faq-list">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h4 class="mb-0">Existing FAQs</h4>
+                    <button type="button" class="btn btn-primary add-faq-btn" onclick="toggleNewFaqForm()">
+                        <i class="fas fa-plus"></i> Add New FAQ
+                    </button>
+                </div>
+
+                <!-- New FAQ Form -->
+                <div id="newFaqForm" class="new-faq-form">
+                    <h5>Add New FAQ</h5>
+                    <form id="manualFaqForm" action="{{ url_for('save_faqs_route') }}" method="post">
+                        <div class="mb-3">
+                            <label for="newQuestion" class="form-label">Question</label>
+                            <input type="text" class="form-control" id="newQuestion" name="questions[]" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="newAnswer" class="form-label">Answer</label>
+                            <textarea class="form-control" id="newAnswer" name="answers[]" rows="3" required></textarea>
+                        </div>
+                        <div class="d-flex justify-content-end gap-2">
+                            <button type="button" class="btn btn-secondary" onclick="toggleNewFaqForm()">Cancel</button>
+                            <button type="submit" class="btn btn-success">Add FAQ</button>
+                        </div>
+                    </form>
+                </div>
+
+                <form id="faqForm" action="{{ url_for('save_faqs_route') }}" method="post">
+                    {% for question, answer in faqs.items() %}
+                    <div class="faq-item" id="faq-{{ loop.index }}">
+                        <button type="button" class="delete-btn" onclick="deleteFAQ('{{ question }}', 'faq-{{ loop.index }}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                        <div class="mb-3">
+                            <label class="form-label">Question</label>
+                            <input type="text" class="form-control" name="questions[]" value="{{ question }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Answer</label>
+                            <textarea class="form-control" name="answers[]" rows="3" required>{{ answer }}</textarea>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    <div class="text-center">
+                        <button type="submit" class="btn btn-success">Save Changes</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        function addNewQA() {
-            const container = document.getElementById('faqContainer');
-            const newQA = document.createElement('div');
-            newQA.className = 'qa-pair mb-4';
-            newQA.innerHTML = `
-                <div class="input-group mb-2">
-                    <span class="input-group-text"><i class="fas fa-question"></i></span>
-                    <input type="text" class="form-control" name="questions[]" placeholder="Enter question" required>
-                    <button type="button" class="btn btn-danger" onclick="removeQA(this)">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-                <div class="input-group">
-                    <span class="input-group-text"><i class="fas fa-comment"></i></span>
-                    <textarea class="form-control" name="answers[]" rows="2" placeholder="Enter answer" required></textarea>
-                </div>
-            `;
-            container.appendChild(newQA);
-        }
-
-        function removeQA(button) {
-            const qaPair = button.closest('.qa-pair');
-            if (document.getElementsByClassName('qa-pair').length > 1) {
-                qaPair.remove();
-            } else {
-                alert('You must have at least one Q&A pair!');
+        function toggleNewFaqForm() {
+            const form = document.getElementById('newFaqForm');
+            form.style.display = form.style.display === 'none' ? 'block' : 'none';
+            
+            // Clear form when showing
+            if (form.style.display === 'block') {
+                document.getElementById('newQuestion').value = '';
+                document.getElementById('newAnswer').value = '';
             }
         }
+
+        function toggleManualAnswer() {
+            const form = document.getElementById('manualAnswerForm');
+            form.style.display = form.style.display === 'none' ? 'block' : 'none';
+            
+            // Clear answer when showing
+            if (form.style.display === 'block') {
+                document.getElementById('manualAnswer').value = '';
+            }
+        }
+
+        async function askLLM() {
+            const question = document.getElementById('question').value.trim();
+            if (!question) {
+                alert('Please enter a question first');
+                return;
+            }
+
+            // Show loading spinner
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('answerContainer').style.display = 'none';
+            document.getElementById('manualAnswerForm').style.display = 'none';
+            
+            try {
+                const response = await fetch('/ask_question', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ question: question })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Display the answer
+                    document.getElementById('answerText').textContent = result.answer;
+                    document.getElementById('answerContainer').style.display = 'block';
+                } else {
+                    alert(result.message || 'Failed to get answer');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred while processing your question');
+            } finally {
+                // Hide loading spinner
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        async function saveManualAnswer() {
+            const question = document.getElementById('question').value.trim();
+            const answer = document.getElementById('manualAnswer').value.trim();
+
+            if (!question || !answer) {
+                alert('Please enter both question and answer');
+                return;
+            }
+
+            // Display the answer in the answer container
+            document.getElementById('answerText').textContent = answer;
+            document.getElementById('answerContainer').style.display = 'block';
+            document.getElementById('manualAnswerForm').style.display = 'none';
+        }
+
+        async function deleteFAQ(question, elementId) {
+            if (!confirm('Are you sure you want to delete this FAQ?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/delete_faq', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ question: question })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Remove the FAQ element from the DOM
+                    document.getElementById(elementId).remove();
+                    // Show success message
+                    alert('FAQ deleted successfully');
+                } else {
+                    alert(result.message || 'Failed to delete FAQ');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred while deleting the FAQ');
+            }
+        }
+
+        async function saveToExisting() {
+            const question = document.getElementById('question').value.trim();
+            if (!question) {
+                alert('Please enter a question first');
+                return;
+            }
+
+            // Create a new FAQ item in the existing list
+            const faqForm = document.getElementById('faqForm');
+            const newFaqItem = document.createElement('div');
+            newFaqItem.className = 'faq-item';
+            newFaqItem.innerHTML = `
+                <button type="button" class="delete-btn" onclick="deleteFAQ('${question}', 'new-faq')">
+                    <i class="fas fa-trash"></i>
+                </button>
+                <div class="mb-3">
+                    <label class="form-label">Question</label>
+                    <input type="text" class="form-control" name="questions[]" value="${question}" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Answer</label>
+                    <textarea class="form-control" name="answers[]" rows="3" required></textarea>
+                </div>
+            `;
+
+            // Insert the new FAQ item before the save button
+            const saveButton = faqForm.querySelector('.text-center');
+            faqForm.insertBefore(newFaqItem, saveButton);
+
+            // Scroll to the new FAQ item
+            newFaqItem.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        async function saveCurrentToExisting() {
+            const question = document.getElementById('question').value.trim();
+            const answer = document.getElementById('answerText').textContent.trim();
+
+            if (!question || !answer) {
+                alert('Please make sure both question and answer are present');
+                return;
+            }
+
+            // Create a new FAQ item in the existing list
+            const faqForm = document.getElementById('faqForm');
+            const newFaqItem = document.createElement('div');
+            newFaqItem.className = 'faq-item';
+            newFaqItem.innerHTML = `
+                <button type="button" class="delete-btn" onclick="deleteFAQ('${question}', 'new-faq')">
+                    <i class="fas fa-trash"></i>
+                </button>
+                <div class="mb-3">
+                    <label class="form-label">Question</label>
+                    <input type="text" class="form-control" name="questions[]" value="${question}" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Answer</label>
+                    <textarea class="form-control" name="answers[]" rows="3" required>${answer}</textarea>
+                </div>
+            `;
+
+            // Insert the new FAQ item before the save button
+            const saveButton = faqForm.querySelector('.text-center');
+            faqForm.insertBefore(newFaqItem, saveButton);
+
+            // Scroll to the new FAQ item
+            newFaqItem.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Add event listener for the main FAQ form submission
+        document.getElementById('faqForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            try {
+                const formData = new FormData(this);
+                const response = await fetch('{{ url_for("save_faqs_route") }}', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    throw new Error('Failed to save FAQs');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred while saving the FAQs');
+            }
+        });
     </script>
 </body>
 </html> 

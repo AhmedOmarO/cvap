@@ -3,6 +3,7 @@ from google.genai import types
 import os
 from typing import Dict
 from dotenv import load_dotenv
+import json
 
 class LLMHandler:
     def __init__(self):
@@ -17,6 +18,17 @@ class LLMHandler:
         
         # Initialize the Gemini client
         self.client = genai.Client(api_key=self.api_key)
+        
+        # Store the resume text
+        self.resume_text = None
+
+    def set_resume_text(self, text: str):
+        """Set the resume text to be used for generating answers
+        
+        Args:
+            text: The resume text content
+        """
+        self.resume_text = text
 
     def generate_faqs_from_resume(self, resume_text: str) -> Dict[str, str]:
         """
@@ -24,6 +36,9 @@ class LLMHandler:
         Returns a dictionary of question-answer pairs.
         """
         try:
+            # Store the resume text for future use
+            self.set_resume_text(resume_text)
+            
             # Prepare the prompt with specific formatting instructions
             prompt = f"""
             You are a recrutier that is screening my resume what would you like to know about me? generate 3 questions and answers that you would like to ask me.
@@ -41,9 +56,6 @@ class LLMHandler:
 
             # Generate content using Gemini
             short_config = types.GenerateContentConfig(max_output_tokens=2000)
-
-
-
             
             response = self.client.models.generate_content(
                 model="gemini-2.0-flash-lite",
@@ -83,3 +95,41 @@ class LLMHandler:
         except Exception as e:
             print(f"Error generating FAQs: {str(e)}")
             return {} 
+
+    def generate_answer(self, question: str) -> str:
+        """Generate an answer for a user's question based on the resume content
+        
+        Args:
+            question: The user's question
+            
+        Returns:
+            str: The generated answer
+        """
+        try:
+            if not self.resume_text:
+                return "No resume has been uploaded yet. Please upload a resume first."
+
+            prompt = f"""You are an AI assistant helping to answer questions about a resume.
+            Please provide a clear and concise answer based on the resume content.
+            If the information is not in the resume, say so.
+
+            Resume text:
+            {self.resume_text}
+
+            Question: {question}
+
+            Please provide a detailed answer based on the resume content.
+            """
+            
+            short_config = types.GenerateContentConfig(max_output_tokens=2000)
+            response = self.client.models.generate_content(
+                model="gemini-2.0-flash-lite",
+                contents=prompt,
+                config=short_config,
+            )
+            
+            return response.text
+            
+        except Exception as e:
+            print(f"Error generating answer: {str(e)}")
+            return None 
